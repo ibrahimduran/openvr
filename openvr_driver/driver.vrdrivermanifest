@@ -1,0 +1,6 @@
+{
+	"alwaysActivate": true,
+	"name" : "mydriver",
+	"resourceOnly" : false,
+	"hmd_presence" : ["*.*"]
+}

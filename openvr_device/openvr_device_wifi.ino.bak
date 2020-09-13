@@ -1,0 +1,222 @@
+#include <WiFi.h>
+#include <Wire.h>
+#include <EEPROM.h>
+
+#include "deps/MPU6050_light/src/MPU6050_light.h"
+#include "deps/MPU6050_light/src/MPU6050_light.cpp"
+#include "deps/Quaternion/Quaternion.h"
+#include "deps/Quaternion/Quaternion.cpp"
+
+#include "lib/config.h"
+#include "lib/vr.h"
+
+MPU6050 mpu(Wire);
+WiFiClient client;
+
+int timer = 0;
+int timer2 = 0;
+int sentBytes = 0;
+
+bool clientWasConnected = false;
+bool applicationButtonWasPressed = false;
+bool systemButtonWasPressed = false;
+bool gripButtonWasPressed = false;
+
+float offsetGyroX = 0.0f;
+float offsetGyroY = 0.0f;
+float offsetGyroZ = 0.0f;
+
+float Rx = 0.0f;
+float Ry = 0.0f;
+float Rz = 0.0f;
+
+float Qx = 0.0f;
+float Qy = 0.0f;
+float Qz = 0.0f;
+float Qw = 0.0f;
+
+uint8_t * buffer = new uint8_t[48];
+
+VR vr;
+
+void calibrate() {
+    Serial.print("Calculating offset values");
+
+    mpu.calcGyroOffsets();
+
+    for (int i = 0; i < 1000; i++) {
+        mpu.update();
+        delay(10);
+        offsetGyroX = (offsetGyroX + mpu.getAngleX()) / (i == 0 ? 1 : 2);
+        offsetGyroY = (offsetGyroY + mpu.getAngleY()) / (i == 0 ? 1 : 2);
+        offsetGyroZ = (offsetGyroZ + mpu.getAngleZ()) / (i == 0 ? 1 : 2);
+
+        if (i % 100 == 0) {
+            Serial.print(".");
+        }
+
+        if (i % 10 == 0) {
+            digitalWrite(PIN_LED_STATUS, i / 10 % 2 == 1 ? LOW : HIGH);
+        }
+    }
+
+    EEPROM.writeFloat(0, offsetGyroX);
+    EEPROM.writeFloat(4, offsetGyroY);
+    EEPROM.writeFloat(8, offsetGyroZ);
+    EEPROM.writeFloat(12, mpu.getGyroXoffset());
+    EEPROM.writeFloat(16, mpu.getGyroYoffset());
+    EEPROM.writeFloat(20, mpu.getGyroZoffset());
+
+    Serial.printf("Gyro Offsets\tX: %f, Y: %f, Z: %f\n", offsetGyroX, offsetGyroY, offsetGyroZ);
+}
+
+void setup() {
+    pinMode(PIN_LED_STATUS, OUTPUT);
+    pinMode(PIN_BTN_GRIP, INPUT_PULLDOWN);
+    pinMode(PIN_BTN_SYSTEM, INPUT_PULLDOWN);
+    pinMode(PIN_BTN_APPLICATION, INPUT_PULLDOWN);
+
+    offsetGyroX = EEPROM.readFloat(0);
+    offsetGyroY = EEPROM.readFloat(4);
+    offsetGyroZ = EEPROM.readFloat(8);
+
+    mpu.setGyroOffsets(EEPROM.readFloat(12), EEPROM.readFloat(16), EEPROM.readFloat(20));
+
+    Serial.begin(9600);
+    delay(1000);
+
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+    Serial.print("Connecting to the wifi");
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println();
+    Serial.println("Connected to the network");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+    
+    digitalWrite(PIN_LED_STATUS, HIGH);
+    delay(3000);
+    digitalWrite(PIN_LED_STATUS, LOW);
+
+    Serial.println("Initializing sensors");
+    Wire.begin();
+    mpu.begin();
+
+    Serial.println("Setup complete");
+}
+
+void loop() {
+    if (digitalRead(PIN_BTN_APPLICATION) == HIGH && digitalRead(PIN_BTN_SYSTEM) == HIGH) {
+        digitalWrite(PIN_LED_STATUS, HIGH);
+        delay(3000);
+        digitalWrite(PIN_LED_STATUS, LOW);
+        calibrate();
+    }
+
+    if (!client.connected()) {
+        if (clientWasConnected) {
+            Serial.println("Disconnected from server");
+            clientWasConnected = false;
+        }
+
+        Serial.println("Connecting to server");
+
+        do {
+            digitalWrite(PIN_LED_STATUS, HIGH);
+
+            client.connect(SERVER_HOST, SERVER_PORT);
+            delay(500);
+
+            digitalWrite(PIN_LED_STATUS, LOW);
+        } while (!client.connected());
+
+        Serial.println("Connection successful");
+    }
+
+    clientWasConnected = true;
+
+    if (millis() - timer2 <= 20) {
+        return;
+    }
+
+    mpu.update();
+
+    timer2 = millis();
+
+    Rx = mpu.getAngleX() - offsetGyroX;
+    Ry = mpu.getAngleY() - offsetGyroY;
+    Rz = mpu.getAngleZ() - offsetGyroZ;
+
+    // Quaternion q = Quaternion::from_euler_rotation(-1 * Rx / 60, Ry / 60, -1 * Rz / 60);
+    Quaternion q = Quaternion::from_euler_rotation(-1 * Rx / 30, -1 * Rz / 30, -1 * Ry / 30);
+    Qx = q.b;
+    Qy = -1 * q.c;
+    Qz = -1 * q.d;
+    Qw = q.a;
+
+    vr.setDeviceIndex(2);
+    vr.setRotation(Qx, Qy, Qz, Qw);
+
+    if (digitalRead(PIN_BTN_GRIP) == HIGH) {
+        if (!gripButtonWasPressed) {
+            uint8_t data = 1;
+            vr.action(3, 1, &data);
+            gripButtonWasPressed = true;
+        }
+    } else {
+        if (gripButtonWasPressed) {
+            uint8_t data = 0;
+            vr.action(3, 1, &data);
+            gripButtonWasPressed = false;
+        }
+    }
+
+    if (digitalRead(PIN_BTN_APPLICATION) == HIGH) {
+        if (!applicationButtonWasPressed) {
+            uint8_t data = 1;
+            vr.action(2, 1, &data);
+            applicationButtonWasPressed = true;
+        }
+    } else {
+        if (applicationButtonWasPressed) {
+            uint8_t data = 0;
+            vr.action(2, 1, &data);
+            applicationButtonWasPressed = false;
+        }
+    }
+
+    if (digitalRead(PIN_BTN_SYSTEM) == HIGH) {
+        if (!systemButtonWasPressed) {
+            uint8_t data = 1;
+            vr.action(1, 1, &data);
+            systemButtonWasPressed = true;
+        }
+    } else {
+        if (systemButtonWasPressed) {
+            uint8_t data = 0;
+            vr.action(1, 1, &data);
+            systemButtonWasPressed = false;
+        }
+    }
+
+    sentBytes = client.write(vr.buffer, vr.size + 1);
+    if (sentBytes == 0) {
+        Serial.println("Failed to send data");
+        client.stop();
+    } else {
+        // Serial.printf("Sent %d bytes of data\n", sentBytes);
+        // delay(1000);
+    }
+
+    if (millis() - timer > 1000) {
+        Serial.printf("Rx: %f\t Ry: %f\t Rz: %f\nQx: %f\tQy: %f\t Qz: %f\t Qw: %f\n\n", Rx, Ry, Rz, Qx, Qy, Qz, Qw);
+        timer = millis();
+    }
+
+    vr.flush();
+}

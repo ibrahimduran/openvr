@@ -1,0 +1,16 @@
+{
+    "driver_mydriver": {
+        "enable": true,
+        "loadPriority": -999,
+        "serialNumber": "1234",
+        "modelNumber": "MyHMDModel 1",
+        "windowX" : 0,
+        "windowY" : 0,
+        "windowWidth" : 1280,
+        "windowHeight" : 760,
+        "renderWidth" : 1280,
+        "renderHeight" : 760,
+        "secondsFromVsyncToPhotons": 0.011,
+        "displayFrequency": 60
+    }
+}

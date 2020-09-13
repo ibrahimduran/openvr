@@ -1,0 +1,6 @@
+*.cpp               text eol=crlf
+*.hpp               text eol=crlf
+*.c                 text eol=crlf
+*.h                 text eol=crlf
+*.vrdrivermanifest  text eol=crlf
+*.vrsettings        text eol=crlf

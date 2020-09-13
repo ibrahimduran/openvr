@@ -1,0 +1,15 @@
+[submodule "openvr_driver/deps/linalg"]
+	path = openvr_driver/deps/linalg
+	url = https://github.com/sgorsten/linalg.git
+[submodule "openvr_driver/deps/hidapi"]
+	path = openvr_driver/deps/hidapi
+	url = https://github.com/libusb/hidapi.git
+[submodule "openvr_driver/deps/openvr"]
+	path = openvr_driver/deps/openvr
+	url = https://github.com/ValveSoftware/openvr.git
+[submodule "openvr_device/deps/Quaternion"]
+	path = openvr_device/deps/Quaternion
+	url = https://github.com/carrino/Quaternion.git
+[submodule "openvr_device/deps/MPU6050_light"]
+	path = openvr_device/deps/MPU6050_light
+	url = https://github.com/rfetick/MPU6050_light.git
