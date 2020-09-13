@@ -5,29 +5,31 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "g++.exe - Build and debug active file",
-      "type": "cppdbg",
+      "name": "cppdbg - build and debug project",
+      "type": "cppvsdbg",
       "request": "launch",
-      "program": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrmonitor.exe",
+      "program": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrserver.exe",
       "args": ["--keepalive", "--earlyload"],
       "stopAtEntry": false,
       "cwd": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64",
-      "additionalSOLibSearchPath": "${workspaceRoot}\\build\\out\\Debug;${workspaceRoot}\\deps\\openvr\\bin\\win64",
       "environment": [],
       "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        },
-        {
-          "text": "-gdb-set follow-fork-mode child",
-        }
-      ],
-      "preLaunchTask": "build"
+      "preLaunchTask": "build",
+      "symbolSearchPath": "${workspaceRoot}\\build\\out\\Debug;C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "cppdbg - build and debug active test file",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceRoot}/build/out/Debug/test_${fileBasenameNoExtension}.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceRoot}/build/out/Debug",
+      "environment": [],
+      "externalConsole": false,
+      "preLaunchTask": "justbuild",
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }
